@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cross-Merge Console</title>
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#ffffff; --panel-2:#f0f2f5; --line:#dde1e7; --text:#1b2330; --muted:#647083;
+  --accent:#2f5bea; --accent-ink:#ffffff; --ok:#16794c; --ok-bg:#e3f5ec; --warn:#9a5b00; --warn-bg:#fff2d9;
+  --err:#b42318; --err-bg:#fde8e6; --info-bg:#e8eefc; --log-bg:#0f1621; --log-text:#d4dbe6;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0e131b; --panel:#151c27; --panel-2:#1b2431; --line:#283345; --text:#e3e8f0; --muted:#8c99ad;
+    --accent:#5b82ff; --ok:#4cd39a; --ok-bg:#12352a; --warn:#f0b450; --warn-bg:#3a2c10;
+    --err:#ff7b6e; --err-bg:#3d1714; --info-bg:#1a2645; --log-bg:#0a0f16;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:5}
+header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
+header .sub{color:var(--muted);font-size:12.5px}
+header .spacer{flex:1}
+main{max-width:1240px;margin:0 auto;padding:20px 24px 60px;display:grid;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.card > .hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.card > .hd h2{font-size:13.5px;margin:0;font-weight:650;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+.card > .hd .spacer{flex:1}
+.card > .bd{padding:14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+label.f{display:grid;gap:4px;font-size:12px;color:var(--muted);font-weight:550}
+input[type=text],input[type=password],input[type=number],input:not([type]){width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--text);font:inherit;font-size:13.5px}
+input:focus{outline:2px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:-1px;border-color:var(--accent)}
+input.mono{font-family:var(--mono);font-size:12.5px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit;font-size:13px;font-weight:550;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{background:var(--err);border-color:var(--err);color:#fff}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted);padding:5px 7px}
+.btn.ghost:hover{color:var(--err)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.toggle{display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;user-select:none}
+.toggle input{width:16px;height:16px;accent-color:var(--accent)}
+table{width:100%;border-collapse:collapse}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.tbl-wrap{overflow-x:auto}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.b-ok{background:var(--ok-bg);color:var(--ok)} .b-warn{background:var(--warn-bg);color:var(--warn)}
+.b-err{background:var(--err-bg);color:var(--err)} .b-info{background:var(--info-bg);color:var(--accent)}
+.b-mute{background:var(--panel-2);color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:12px;cursor:pointer;font-weight:550}
+.chip.on{background:var(--info-bg);border-color:var(--accent);color:var(--accent)}
+.chip small{opacity:.75;font-weight:500}
+.muted{color:var(--muted)} .small{font-size:12px}
+.mono{font-family:var(--mono)}
+.pathcell{min-width:280px}
+.empty{color:var(--muted);font-size:13px;padding:10px 0}
+.warnlist{margin:10px 0 0;padding:10px 12px 10px 28px;background:var(--warn-bg);color:var(--warn);border-radius:8px;font-size:12.5px}
+.errlist{background:var(--err-bg);color:var(--err)}
+.runbar{display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.mode{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.mode button{border:0;background:var(--panel);color:var(--muted);padding:7px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.mode button.on.dry{background:var(--info-bg);color:var(--accent)}
+.mode button.on.live{background:var(--err);color:#fff}
+#log{background:var(--log-bg);color:var(--log-text);font:12px/1.5 var(--mono);height:340px;overflow:auto;padding:10px 12px;border-radius:0 0 10px 10px;white-space:pre-wrap;word-break:break-word}
+#log .cmd{color:#7fa7ff} #log .out{color:#93a0b4} #log .head{color:#fff;font-weight:700}
+#log .ok{color:#5be0a4} #log .warn{color:#ffc56b} #log .err{color:#ff8a7d} #log .ts{color:#56637a;margin-right:8px}
+.files{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:3px}
+.summary{display:flex;gap:8px;flex-wrap:wrap}
+code.br{font-family:var(--mono);font-size:12px;background:var(--panel-2);padding:1px 6px;border-radius:4px}
+.arrow{color:var(--muted);margin:0 4px}
+@media (max-width:720px){ header{padding:12px 16px} main{padding:16px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Cross-Merge Console</h1>
+  <span class="sub">Merge one source branch into many targets · Bitbucket PRs on conflict</span>
+  <span class="spacer"></span>
+  <span id="saveState" class="small muted"></span>
+</header>
+
+<main>
+  <!-- Run settings -->
+  <section class="card">
+    <div class="hd"><h2>Run settings</h2></div>
+    <div class="bd">
+      <div class="grid">
+        <label class="f">Sprint number<input id="sprint" type="text" placeholder="50"></label>
+        <label class="f">Source branch<input id="source" class="mono" list="dl-branches" placeholder="e.g. release/R50"></label>
+        <label class="f">Bitbucket base URL<input id="baseUrl" class="mono" type="text"></label>
+        <label class="f">Bitbucket user<input id="user" type="text" placeholder="xyz@deloitte.com"></label>
+        <label class="f">Bitbucket API key (not saved)<input id="token" type="password" autocomplete="off" placeholder="HTTP access token"></label>
+      </div>
+      <div style="margin-top:12px" class="small muted">
+        <label class="toggle"><input id="insecure" type="checkbox"> Skip TLS certificate check (internal CA)</label>
+      </div>
+    </div>
+  </section>
+
+  <!-- Repos -->
+  <section class="card">
+    <div class="hd">
+      <h2>Repositories</h2>
+      <span id="groupSel" class="chips"></span>
+      <span class="spacer"></span>
+      <button class="btn sm" id="fetchAll">Fetch &amp; refresh branches</button>
+      <button class="btn sm" id="addRepo">+ Add repo</button>
+    </div>
+    <div class="bd tbl-wrap">
+      <table>
+        <thead><tr><th style="width:34px">Run</th><th>Group</th><th>Repo slug</th><th>Project key</th><th>Local path</th><th>Status</th><th></th></tr></thead>
+        <tbody id="repoRows"></tbody>
+      </table>
+      <datalist id="dl-groups"><option value="Aspen"><option value="Aspen+"></datalist>
+    </div>
+  </section>
+
+  <!-- Targets -->
+  <section class="card">
+    <div class="hd">
+      <h2>Target branches</h2>
+      <span class="spacer"></span>
+      <button class="btn sm" id="addTarget">+ Add target</button>
+    </div>
+    <div class="bd tbl-wrap">
+      <table>
+        <thead><tr><th>Target branch</th><th>Reviewers (comma-separated)</th><th>Apply to repos</th><th></th></tr></thead>
+        <tbody id="targetRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Plan -->
+  <section class="card">
+    <div class="hd">
+      <h2>Plan</h2><span id="planCount" class="badge b-mute"></span>
+      <span class="spacer"></span>
+      <button class="btn sm" id="exportConf">Export feature_branches.conf</button>
+    </div>
+    <div class="bd">
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Repo</th><th>Merge</th><th>Merge branch (on conflict)</th><th>Reviewers</th></tr></thead>
+        <tbody id="planRows"></tbody>
+      </table></div>
+      <ul id="planWarn" class="warnlist" hidden></ul>
+      <div class="runbar" style="margin-top:14px">
+        <div class="mode" role="group" aria-label="Run mode">
+          <button id="modeDry" class="dry">Dry run</button>
+          <button id="modeLive" class="live">Live run</button>
+        </div>
+        <span id="modeHint" class="small muted"></span>
+        <span style="flex:1"></span>
+        <button class="btn primary" id="runBtn">Run</button>
+      </div>
+      <ul id="runErr" class="warnlist errlist" hidden></ul>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section class="card" id="resultsCard" hidden>
+    <div class="hd"><h2>Results</h2><span class="spacer"></span><span id="summary" class="summary"></span></div>
+    <div class="bd tbl-wrap">
+      <table>
+        <thead><tr><th>Repo</th><th>Merge</th><th>Status</th><th>Details</th></tr></thead>
+        <tbody id="resultRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" id="logCard" hidden>
+    <div class="hd"><h2>Log</h2><span id="logPath" class="small muted mono"></span><span class="spacer"></span>
+      <button class="btn sm" id="clearLog">Clear</button></div>
+    <div id="log"></div>
+  </section>
+
+  <datalist id="dl-branches"></datalist>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 9);
+
+const DEFAULTS = {
+  sprint: '', source: '', baseUrl: 'https://hhsbb.hsd.state.nm.us', user: '', insecure: false,
+  repos: [
+    { id: uid(), enabled: true, group: 'Aspen',  slug: 'aspen',    project: 'ASPEN', path: '' },
+    { id: uid(), enabled: true, group: 'Aspen',  slug: 'database', project: 'ASPEN', path: '' },
+  ],
+  targets: [],
+};
+let state = structuredClone(DEFAULTS);
+let dryRun = true;
+const info = {};          // repoId -> repo-info response
+let running = false;
+
+// ---------- persistence ----------
+let saveTimer;
+function save() {
+  clearTimeout(saveTimer);
+  $('#saveState').textContent = 'Saving…';
+  saveTimer = setTimeout(async () => {
+    try {
+      await fetch('/api/config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(state) });
+      $('#saveState').textContent = 'Config saved';
+    } catch { $('#saveState').textContent = 'Save failed'; }
+  }, 400);
+}
+
+async function load() {
+  try {
+    const cfg = await (await fetch('/api/config')).json();
+    if (cfg && cfg.repos) state = { ...DEFAULTS, ...cfg };
+  } catch {}
+  for (const k of ['sprint','source','baseUrl','user']) $('#'+k).value = state[k] || '';
+  $('#insecure').checked = !!state.insecure;
+  renderAll();
+  state.repos.filter(r => r.path).forEach(r => checkRepo(r.id));
+}
+
+// ---------- repo info ----------
+async function checkRepo(id, fetchRemote = false) {
+  const r = state.repos.find(x => x.id === id);
+  if (!r) return;
+  if (!r.path) { delete info[id]; renderRepos(); renderPlan(); return; }
+  info[id] = { loading: true };
+  renderRepoStatus(id);
+  try {
+    info[id] = await (await fetch('/api/repo-info', { method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ path: r.path, fetch: fetchRemote }) })).json();
+  } catch (e) { info[id] = { ok: false, error: 'Server unreachable' }; }
+  renderRepoStatus(id); updateBranchList(); renderPlan();
+}
+
+function renderRepoStatus(id) {
+  const el = document.querySelector(`[data-status="${id}"]`);
+  if (!el) return;
+  const i = info[id];
+  if (!i) el.innerHTML = '<span class="badge b-mute">no path</span>';
+  else if (i.loading) el.innerHTML = '<span class="badge b-mute">checking…</span>';
+  else if (!i.ok) el.innerHTML = `<span class="badge b-err">${esc(i.error)}</span>`;
+  else el.innerHTML = `<span class="badge ${i.dirty ? 'b-warn' : 'b-ok'}" title="${esc(i.remote)}">${i.dirty ? 'uncommitted changes' : 'ready'}</span>
+     <div class="small muted">on <span class="mono">${esc(i.branch)}</span> · ${i.branches.length} remote branches</div>`;
+}
+
+function updateBranchList() {
+  const all = new Set();
+  state.repos.filter(r => r.enabled).forEach(r => (info[r.id]?.branches || []).forEach(b => all.add(b)));
+  $('#dl-branches').innerHTML = [...all].sort().map(b => `<option value="${esc(b)}">`).join('');
+}
+
+// ---------- render ----------
+function renderAll() { renderGroups(); renderRepos(); renderTargets(); renderPlan(); renderMode(); }
+
+function renderGroups() {
+  const groups = [...new Set(state.repos.map(r => r.group).filter(Boolean))];
+  $('#groupSel').innerHTML = '<span class="small muted">Select:</span>' +
+    ['All', ...groups, 'None'].map(g => `<button class="chip" data-group="${esc(g)}">${esc(g)}</button>`).join('');
+}
+
+function renderRepos() {
+  const rows = state.repos.map(r => `
+    <tr data-repo="${r.id}">
+      <td><input type="checkbox" data-f="enabled" ${r.enabled ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--accent)"></td>
+      <td style="min-width:110px"><input data-f="group" list="dl-groups" value="${esc(r.group)}" placeholder="Aspen / Aspen+"></td>
+      <td style="min-width:130px"><input data-f="slug" class="mono" value="${esc(r.slug)}" placeholder="aspen"></td>
+      <td style="min-width:110px"><input data-f="project" class="mono" value="${esc(r.project)}" placeholder="ASPEN"></td>
+      <td class="pathcell"><input data-f="path" class="mono" value="${esc(r.path)}" placeholder="/Users/you/work/aspen"></td>
+      <td data-status="${r.id}" style="min-width:170px"></td>
+      <td><button class="btn ghost" data-del-repo="${r.id}" title="Remove repo">✕</button></td>
+    </tr>`).join('');
+  $('#repoRows').innerHTML = rows || '<tr><td colspan="7" class="empty">No repositories. Add one to get started.</td></tr>';
+  state.repos.forEach(r => renderRepoStatus(r.id));
+}
+
+function repoLabel(r) { return `${esc(r.slug || '(unnamed)')}${r.group ? ` <small>${esc(r.group)}</small>` : ''}`; }
+
+function renderTargets() {
+  const rows = state.targets.map(t => `
+    <tr data-target="${t.id}">
+      <td style="min-width:200px"><input data-f="branch" class="mono" list="dl-branches" value="${esc(t.branch)}" placeholder="e.g. develop"></td>
+      <td style="min-width:260px"><input data-f="reviewers" value="${esc(t.reviewers)}" placeholder="a@deloitte.com, b@deloitte.com"></td>
+      <td><div class="chips">${state.repos.map(r =>
+        `<button class="chip ${t.repos.includes(r.id) ? 'on' : ''}" data-toggle-repo="${r.id}">${repoLabel(r)}</button>`).join('')}</div></td>
+      <td><button class="btn ghost" data-del-target="${t.id}" title="Remove target">✕</button></td>
+    </tr>`).join('');
+  $('#targetRows').innerHTML = rows || '<tr><td colspan="4" class="empty">No target branches yet. Click “+ Add target”.</td></tr>';
+}
+
+function mergeBranchName(target) {
+  const d = new Date(), pad = n => String(n).padStart(2, '0');
+  return `Sprint${state.sprint || '?'}-${state.source || '?'}-Crossmerge-to-${target}-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+}
+
+function planItems() {
+  const items = [];
+  state.repos.filter(r => r.enabled).forEach(r =>
+    state.targets.filter(t => t.branch && t.repos.includes(r.id)).forEach(t => items.push({ r, t })));
+  return items;
+}
+
+function renderPlan() {
+  const items = planItems();
+  $('#planCount').textContent = `${items.length} merge${items.length === 1 ? '' : 's'}`;
+  $('#planRows').innerHTML = items.map(({ r, t }) => `
+    <tr><td>${repoLabel(r)}</td>
+      <td><code class="br">${esc(state.source || '?')}</code><span class="arrow">→</span><code class="br">${esc(t.branch)}</code></td>
+      <td class="mono small muted">${esc(mergeBranchName(t.branch))}</td>
+      <td class="small">${esc(t.reviewers) || '<span class="muted">—</span>'}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="empty">Enable a repo, add a target branch and assign it to that repo.</td></tr>';
+
+  const w = [];
+  const src = state.source;
+  state.repos.filter(r => r.enabled).forEach(r => {
+    const i = info[r.id];
+    if (!r.path) w.push(`${r.slug}: no local path set`);
+    else if (i && i.ok === false) w.push(`${r.slug}: ${i.error}`);
+    else if (i?.ok) {
+      if (i.dirty) w.push(`${r.slug}: working tree has uncommitted changes — the run will skip it`);
+      if (src && !i.branches.includes(src)) w.push(`${r.slug}: source branch “${src}” not found on origin (try Fetch & refresh)`);
+      state.targets.filter(t => t.branch && t.repos.includes(r.id) && !i.branches.includes(t.branch))
+        .forEach(t => w.push(`${r.slug}: target “${t.branch}” not found on origin`));
+    }
+    if (!state.targets.some(t => t.repos.includes(r.id))) w.push(`${r.slug}: enabled but no target branches assigned`);
+  });
+  state.targets.forEach(t => { if (t.branch && t.branch === src) w.push(`Target “${t.branch}” is the same as the source`); });
+  $('#planWarn').hidden = !w.length;
+  $('#planWarn').innerHTML = w.map(x => `<li>${esc(x)}</li>`).join('');
+}
+
+function renderMode() {
+  $('#modeDry').classList.toggle('on', dryRun);
+  $('#modeLive').classList.toggle('on', !dryRun);
+  $('#modeHint').textContent = dryRun
+    ? 'Tests each merge locally, then resets. Nothing is pushed, no PRs are created.'
+    : 'Clean merges are pushed to the target. Conflicts push a merge branch and open a PR.';
+  $('#runBtn').textContent = running ? 'Running…' : (dryRun ? 'Start dry run' : 'Start live run');
+  $('#runBtn').className = 'btn ' + (dryRun ? 'primary' : 'danger');
+  $('#runBtn').disabled = running;
+}
+
+// ---------- events ----------
+['sprint','source','baseUrl','user'].forEach(k => $('#'+k).addEventListener('input', e => { state[k] = e.target.value.trim(); save(); renderPlan(); }));
+$('#insecure').addEventListener('change', e => { state.insecure = e.target.checked; save(); });
+
+$('#addRepo').onclick = () => {
+  state.repos.push({ id: uid(), enabled: true, group: 'Aspen+', slug: '', project: '', path: '' });
+  renderAll(); save();
+};
+$('#addTarget').onclick = () => {
+  state.targets.push({ id: uid(), branch: '', reviewers: '', repos: state.repos.filter(r => r.enabled).map(r => r.id) });
+  renderTargets(); renderPlan(); save();
+  document.querySelector('#targetRows tr:last-child input')?.focus();
+};
+$('#fetchAll').onclick = () => state.repos.filter(r => r.enabled && r.path).forEach(r => checkRepo(r.id, true));
+
+$('#repoRows').addEventListener('input', e => {
+  const tr = e.target.closest('tr[data-repo]'), f = e.target.dataset.f;
+  if (!tr || !f) return;
+  const r = state.repos.find(x => x.id === tr.dataset.repo);
+  r[f] = f === 'enabled' ? e.target.checked : e.target.value.trim();
+  if (f === 'enabled') updateBranchList();
+  if (f === 'group') renderGroups();
+  if (f === 'slug' || f === 'group') renderTargets();
+  renderPlan(); save();
+});
+$('#repoRows').addEventListener('change', e => {
+  const tr = e.target.closest('tr[data-repo]');
+  if (tr && e.target.dataset.f === 'path') checkRepo(tr.dataset.repo);
+});
+$('#repoRows').addEventListener('click', e => {
+  const id = e.target.closest('[data-del-repo]')?.dataset.delRepo;
+  if (!id) return;
+  state.repos = state.repos.filter(r => r.id !== id);
+  state.targets.forEach(t => t.repos = t.repos.filter(x => x !== id));
+  delete info[id]; renderAll(); updateBranchList(); save();
+});
+$('#groupSel').addEventListener('click', e => {
+  const g = e.target.closest('[data-group]')?.dataset.group;
+  if (!g) return;
+  state.repos.forEach(r => r.enabled = g === 'All' ? true : g === 'None' ? false : r.group === g);
+  renderRepos(); updateBranchList(); renderPlan(); save();
+});
+
+$('#targetRows').addEventListener('input', e => {
+  const tr = e.target.closest('tr[data-target]'), f = e.target.dataset.f;
+  if (!tr || !f) return;
+  state.targets.find(x => x.id === tr.dataset.target)[f] = e.target.value.trim();
+  renderPlan(); save();
+});
+$('#targetRows').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-target]');
+  if (!tr) return;
+  const t = state.targets.find(x => x.id === tr.dataset.target);
+  const rid = e.target.closest('[data-toggle-repo]')?.dataset.toggleRepo;
+  if (rid) {
+    t.repos = t.repos.includes(rid) ? t.repos.filter(x => x !== rid) : [...t.repos, rid];
+    renderTargets(); renderPlan(); save();
+  } else if (e.target.closest('[data-del-target]')) {
+    state.targets = state.targets.filter(x => x !== t);
+    renderTargets(); renderPlan(); save();
+  }
+});
+
+$('#modeDry').onclick = () => { dryRun = true; renderMode(); };
+$('#modeLive').onclick = () => { dryRun = false; renderMode(); };
+
+$('#exportConf').onclick = () => {
+  const lines = ['# Generated by Cross-Merge Console', '# source_branch : target_branch : reviewers', ''];
+  state.repos.filter(r => r.enabled).forEach(r => {
+    const ts = state.targets.filter(t => t.branch && t.repos.includes(r.id));
+    if (!ts.length) return;
+    lines.push(`[${r.slug}]`);
+    ts.forEach(t => lines.push(`${state.source} : ${t.branch} : ${t.reviewers}`));
+    lines.push('');
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain' }));
+  a.download = 'feature_branches.conf'; a.click();
+};
+
+// ---------- run ----------
+const STATUS = {
+  merged:      ['b-ok',   'Merged & pushed'],
+  clean:       ['b-ok',   'Clean merge'],
+  up_to_date:  ['b-mute', 'Already up to date'],
+  conflict_pr: ['b-warn', 'Conflict → PR'],
+  conflict:    ['b-warn', 'Conflict'],
+  failed:      ['b-err',  'Failed'],
+  pending:     ['b-info', 'Pending'],
+};
+const results = new Map();
+
+function renderResults() {
+  $('#resultRows').innerHTML = [...results.values()].map(x => {
+    const [cls, label] = STATUS[x.status] || STATUS.pending;
+    const files = x.files?.length ? `<div class="files">${x.files.slice(0, 6).map(esc).join('<br>')}${x.files.length > 6 ? `<br>+${x.files.length - 6} more` : ''}</div>` : '';
+    const link = x.prUrl ? ` <a href="${esc(x.prUrl)}" target="_blank" rel="noopener">Open PR ↗</a>` : '';
+    return `<tr><td>${esc(x.repo)}${x.group ? ` <span class="small muted">${esc(x.group)}</span>` : ''}</td>
+      <td><code class="br">${esc(x.source)}</code><span class="arrow">→</span><code class="br">${esc(x.target)}</code></td>
+      <td><span class="badge ${cls}">${label}</span></td>
+      <td class="small">${esc(x.detail || '')}${link}${files}</td></tr>`;
+  }).join('');
+  const counts = {};
+  results.forEach(x => counts[x.status] = (counts[x.status] || 0) + 1);
+  $('#summary').innerHTML = Object.entries(counts).map(([s, n]) => `<span class="badge ${STATUS[s]?.[0] || 'b-mute'}">${n} ${STATUS[s]?.[1] || s}</span>`).join('');
+}
+
+function logLine(ev) {
+  const el = $('#log');
+  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 30;
+  const div = document.createElement('div');
+  div.className = ev.level;
+  div.innerHTML = `<span class="ts">${esc(ev.ts)}</span>${esc(ev.msg)}`;
+  el.appendChild(div);
+  if (atBottom) el.scrollTop = el.scrollHeight;
+}
+
+$('#clearLog').onclick = () => $('#log').innerHTML = '';
+
+$('#runBtn').onclick = async () => {
+  const errBox = $('#runErr');
+  errBox.hidden = true;
+  const items = planItems();
+  if (!items.length) { errBox.hidden = false; errBox.innerHTML = '<li>Nothing to run — check the plan.</li>'; return; }
+  if (!dryRun) {
+    const n = items.length;
+    if (!confirm(`LIVE RUN\n\nThis will merge “${state.source}” into ${n} target branch${n > 1 ? 'es' : ''} and push to origin.\nConflicting merges will push a merge branch and open a Bitbucket PR.\n\nContinue?`)) return;
+  }
+  const repos = state.repos.filter(r => r.enabled && state.targets.some(t => t.branch && t.repos.includes(r.id)));
+  const payload = { sprint: state.sprint, source: state.source, baseUrl: state.baseUrl, user: state.user,
+    token: $('#token').value, insecure: state.insecure, dryRun, repos,
+    targets: state.targets.filter(t => t.branch).map(({ branch, reviewers, repos }) => ({ branch, reviewers, repos })) };
+
+  let res;
+  try {
+    res = await fetch('/api/run', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+  } catch { errBox.hidden = false; errBox.innerHTML = '<li>Server unreachable — is server.py running?</li>'; return; }
+  const data = await res.json();
+  if (!res.ok) { errBox.hidden = false; errBox.innerHTML = (data.errors || [data.error]).map(x => `<li>${esc(x)}</li>`).join(''); return; }
+
+  running = true; renderMode();
+  results.clear();
+  items.forEach(({ r, t }) => results.set(`${r.slug}|${t.branch}`, { repo: r.slug, group: r.group, source: state.source, target: t.branch, status: 'pending' }));
+  $('#resultsCard').hidden = false; $('#logCard').hidden = false;
+  $('#log').innerHTML = ''; $('#logPath').textContent = data.logPath;
+  renderResults();
+  $('#resultsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  const es = new EventSource('/api/stream?job=' + data.job);
+  es.onmessage = m => {
+    const ev = JSON.parse(m.data);
+    if (ev.type === 'log') logLine(ev);
+    else if (ev.type === 'result') { results.set(`${ev.repo}|${ev.target}`, ev); renderResults(); }
+    else if (ev.type === 'end') {
+      es.close(); running = false; renderMode();
+      state.repos.filter(r => r.enabled && r.path).forEach(r => checkRepo(r.id));
+    }
+  };
+  es.onerror = () => { if (running) { es.close(); running = false; renderMode(); logLine({ ts: '', level: 'err', msg: 'Lost connection to server.' }); } };
+};
+
+load();
+</script>
+</body>
+</html>
